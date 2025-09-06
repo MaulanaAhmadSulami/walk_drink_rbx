@@ -48,10 +48,13 @@ local function recomputeSpeed(p: Player)
 	if typeof(product) == "number" then mult *= product end
 	if typeof(checkpoint) == "number" then mult *= checkpoint end
 	local thirst = thirstByUser[p.UserId] or constant.INITIAL_THIRST
+	
+	local baseSpeed = p:GetAttribute("BaseSpeed") or constant.NORMAL_WALKSPEED
+	
 	if thirst <= 0 then
 		hum.WalkSpeed = constant.EXHAUSTED_WALKSPEED
 	else
-		hum.WalkSpeed = constant.NORMAL_WALKSPEED * mult
+		hum.WalkSpeed = baseSpeed * mult
 	end
 end
 

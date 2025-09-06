@@ -144,6 +144,9 @@ game.Players.PlayerAdded:Connect(function(plr)
 		CheckpointsPassed = 0,
 		Boost2Remaining = 0,
 		Boost3Remaining = 0,
+		isEarlyRebirth = false,
+		BaseSpeed = nil,
+		RebirthCount = 0,
 	}
 
 
@@ -166,9 +169,17 @@ game.Players.PlayerAdded:Connect(function(plr)
 		playerData[plr.UserId].CheckpointsPassed = data.CheckpointsPassed or 0
 		playerData[plr.UserId].Boost2Remaining = data.Boost2Remaining or 0
 		playerData[plr.UserId].Boost3Remaining = data.Boost3Remaining or 0
+		playerData[plr.UserId].isEarlyRebirth = data.isEarlyRebirth or false
+		playerData[plr.UserId].BaseSpeed = data.BaseSpeed or nil
+		playerData[plr.UserId].RebirthCount = data.RebirthCount or 0
+		
 		plr:SetAttribute("CheckpointsPassed", playerData[plr.UserId].CheckpointsPassed)
 		plr:SetAttribute("Boost2Remaining", playerData[plr.UserId].Boost2Remaining)
 		plr:SetAttribute("Boost3Remaining", playerData[plr.UserId].Boost3Remaining)
+		plr:SetAttribute("isEarlyRebirth", playerData[plr.UserId].isEarlyRebirth)
+		plr:SetAttribute("BaseSpeed", playerData[plr.UserId].BaseSpeed)
+		plr:SetAttribute("RebirthCount", playerData[plr.UserId].RebirthCount)
+		
 		local step = constant.CHECKPOINT_MULTIPLIER_STEP or 0.25
 		local maxMult = constant.CHECKPOINT_MULTIPLIER_MAX or 5.0
 		local mult = math.clamp(1 + (playerData[plr.UserId].CheckpointsPassed * step), 1, maxMult)
@@ -179,10 +190,10 @@ game.Players.PlayerAdded:Connect(function(plr)
 			local humNow = currChar:FindFirstChildOfClass("Humanoid") or currChar:FindFirstChild("Humanoid")
 			if humNow then
 				humNow:SetAttribute("CheckpointSpeedMultiplier", mult)
-				print(string.format("[Datastore] Immediate apply x%.2f for %s (passed=%d)", mult, plr.Name, playerData[plr.UserId].CheckpointsPassed))
+				--print(string.format("[Datastore] Immediate apply x%.2f for %s (passed=%d)", mult, plr.Name, playerData[plr.UserId].CheckpointsPassed))
 			end
 		end
-		print(string.format("[Datastore] Restored checkpoints=%d mult=x%.2f for %s", playerData[plr.UserId].CheckpointsPassed, mult, plr.Name))
+		--print(string.format("[Datastore] Restored checkpoints=%d mult=x%.2f for %s", playerData[plr.UserId].CheckpointsPassed, mult, plr.Name))
 
 		-- Save position and teleport them upon rejoining
 		local lastPosV3 = deserializeVector3(playerData[plr.UserId].LastPosition)
@@ -241,21 +252,43 @@ game.Players.PlayerAdded:Connect(function(plr)
 			playerData[plr.UserId].CheckpointsPassed = val
 		end
 	end)
-
-	-- Persist product boost remaining on attribute change
+	
+	-- Persist product boost duration remainder on attribute change
 	plr:GetAttributeChangedSignal("Boost2Remaining"):Connect(function()
 		local val = tonumber(plr:GetAttribute("Boost2Remaining")) or 0
 		if playerData[plr.UserId] then
 			playerData[plr.UserId].Boost2Remaining = val
-			print(string.format("[Datastore] %s Boost2Remaining -> %d", plr.Name, val))
+			--print(string.format("Datastore %s Boost2Remaining -> %d", plr.Name, val))
 		end
 	end)
-
+	
 	plr:GetAttributeChangedSignal("Boost3Remaining"):Connect(function()
 		local val = tonumber(plr:GetAttribute("Boost3Remaining")) or 0
 		if playerData[plr.UserId] then
 			playerData[plr.UserId].Boost3Remaining = val
-			print(string.format("[Datastore] %s Boost3Remaining -> %d", plr.Name, val))
+			--print(string.format("Datastore %s Boost3Remaining -> %d", plr.Name, val))
+		end
+	end)
+	
+	-- Persist early rebirth status on attribute change
+	plr:GetAttributeChangedSignal("isEarlyRebirth"):Connect(function()
+		local val = plr:GetAttribute("isEarlyRebirth")
+		if val ~= nil and playerData[plr.UserId] then
+			playerData[plr.UserId].isEarlyRebirth = val
+		end
+	end)
+	
+	plr:GetAttributeChangedSignal("BaseSpeed"):Connect(function()
+		local val = plr:GetAttribute("BaseSpeed")
+		if playerData[plr.UserId] then
+			playerData[plr.UserId].BaseSpeed = val
+		end
+	end)
+
+	plr:GetAttributeChangedSignal("RebirthCount"):Connect(function()
+		local val = tonumber(plr:GetAttribute("RebirthCount")) or 0
+		if playerData[plr.UserId] then
+			playerData[plr.UserId].RebirthCount = val
 		end
 	end)
 
@@ -315,12 +348,24 @@ game.Players.PlayerRemoving:Connect(function(plr)
 	if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 		playerData[plr.UserId].LastPosition = serializeVector3(plr.Character.HumanoidRootPart.Position)
 	end
-
+	
 	-- Copy latest boost attributes just before final save
 	playerData[plr.UserId].Boost2Remaining = tonumber(plr:GetAttribute("Boost2Remaining")) or playerData[plr.UserId].Boost2Remaining or 0
 	playerData[plr.UserId].Boost3Remaining = tonumber(plr:GetAttribute("Boost3Remaining")) or playerData[plr.UserId].Boost3Remaining or 0
-	print(string.format("[Datastore] Finalizing %s boosts: b2=%d b3=%d", plr.Name, playerData[plr.UserId].Boost2Remaining, playerData[plr.UserId].Boost3Remaining))
-
+	--print(string.format("[Datastore] Finalizing %s boosts: b2=%d b3=%d", plr.Name, playerData[plr.UserId].Boost2Remaining, playerData[plr.UserId].Boost3Remaining))
+	
+	local earlyRebirthStatus = plr:GetAttribute("isEarlyRebirth")
+	if earlyRebirthStatus ~= nil then
+		playerData[plr.UserId].isEarlyRebirth = earlyRebirthStatus
+	end
+	local baseSpeed = plr:GetAttribute("BaseSpeed")
+	if baseSpeed ~= nil then
+		playerData[plr.UserId].BaseSpeed = baseSpeed
+	end
+	local rebirthCount = tonumber(plr:GetAttribute("RebirthCount"))
+	if rebirthCount ~= nil then
+		playerData[plr.UserId].RebirthCount = rebirthCount
+	end
 	-- Save final data
 	local success = safeSetAsync(plr.UserId, playerData[plr.UserId])
 	if not success then

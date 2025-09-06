@@ -45,13 +45,21 @@ local function checkOwnership(p: Player)
 	isOwnGamepass[p.UserId] = (ok and owns == true)
 	if ok then
 		if owns then
-			print(p.Name .. " owns double win gamepass")
+			--print(p.Name .. " owns double win gamepass")
+			return
 		else
-			print(p.Name .. " does not own the double wins gamepass")
+			--print(p.Name .. " does not own the double wins gamepass")
+			return
 		end
 	else
 		warn("Ownership check error for ", p.Name)
 	end
+end
+
+local function seedPlayer(p: Player)
+	task.spawn(function()
+		checkOwnership(p)
+	end)
 end
 
 local function getWinsObject(plr: Player): NumberValue?
@@ -167,8 +175,6 @@ local function HookZonePart(part: BasePart)
 		end
 	end)
 	
-	
-	-- Initial overlap detection: if players are already inside the part when hooked, count them
 	local half = part.Size * 0.5
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local char = plr.Character
@@ -215,13 +221,14 @@ end)
 Players.PlayerAdded:Connect(function(plr)
 	plr:SetAttribute("InGoal", false)
 	plr:SetAttribute("VictoryActive", false)
+	seedPlayer(plr)
 	
 	plr.CharacterAdded:Connect(function(char)
 		local hum = char:WaitForChild("Humanoid") :: Humanoid
-		
 		-- clear upon respawn or death (this shouldnt be possible since reset btn is disabled but safety)
 		plr:SetAttribute("VictoryActive", false)
 		forceLeave(plr)
+		seedPlayer(plr)
 		
 		hum.Died:Connect(function()
 			forceLeave(plr)
@@ -261,8 +268,21 @@ VictoryTeleportEvent.OnServerEvent:Connect(function(plr)
 	
 	if victoryAtr == true then
 		awardWin(plr)
+		
+		local currRebirthCount = tonumber(plr:GetAttribute("RebirthCount")) or 0
+		local newRebirthCount = currRebirthCount + 1
+		plr:SetAttribute("RebirthCount", newRebirthCount)
+		
+		local earlyRebirthBonus = plr:GetAttribute("isEarlyRebirth") and 2 or 0
+		local rebirthBonus = newRebirthCount * 2
+		local defaultWalkspeed = 16
+		local newBaseSpeed = defaultWalkspeed + earlyRebirthBonus + rebirthBonus
+		
+		plr:SetAttribute("BaseSpeed", newBaseSpeed)
+		
+		print(string.format("%s completed rebirth #%d - BaseSpeed: %d (Early: %d, Rebirths: %d)", 
+			plr.Name, newRebirthCount, newBaseSpeed, earlyRebirthBonus, rebirthBonus))
 	end
-	
 	
 	forceLeave(plr)
 	plr:SetAttribute("VictoryActive", false)

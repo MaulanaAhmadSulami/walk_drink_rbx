@@ -8,14 +8,9 @@ local statUpdateEvent = events:WaitForChild("StatsUpdateEvent")
 
 local constant = require(rs:WaitForChild("Constants"))
 
---local GOAL_TAG = "Goal[Example]"
---local START_PART_NAME = "Start"
-
---local MAX_RETRIES = 3
---local AUTO_SAVE = 300 --Auto save every 60 seconds
 local playerData = {}
 
--- Helpers
+-- Helpers (can be moved into modules if possible later)
 local function serializeVector3(v3)
 	if typeof(v3) == "Vector3" then
 		return { X = v3.X, Y = v3.Y, Z = v3.Z }
@@ -54,7 +49,6 @@ end
 local function isInsizeAnyGoal(position: Vector3): boolean
 	local parts = getGoalParts()
 	if #parts == 0 then
-		--print("[Datastore] No goal parts found for inside-check")
 		return false
 	end
 	for _, part in ipairs(parts) do
@@ -73,7 +67,7 @@ local function safeGetAsync(key)
 		if success then
 			return data
 		else
-			warn(string.format("[Datastore] failed to load attempts %d: %s: ", attemps, tostring(data)))
+			warn(string.format("failed to load attempts %d: %s: ", attemps, tostring(data)))
 		end
 	end
 
@@ -88,7 +82,7 @@ local function safeSetAsync(key, value)
 		if success then
 			return true
 		else
-			warn(string.format("[Datastore] failed to save attempts %d: %s ", attemps, tostring(err)))
+			warn(string.format("failed to save attempts %d: %s ", attemps, tostring(err)))
 		end
 	end
 
@@ -101,9 +95,9 @@ local function savePlayerData(plr)
 	print(string.format("[Datastore] Saving %s boosts: b2=%s b3=%s", plr.Name, tostring(cache.Boost2Remaining), tostring(cache.Boost3Remaining)))
 	local success = safeSetAsync(plr.UserId, cache)
 	if not success then
-		warn("[Datastore] failed to save to database for ", plr.Name)
+		warn("failed to save to database for ", plr.Name)
 	else
-		print("[Datastore] Auto-saved success for ", plr.Name)
+		print("Auto-saved success for ", plr.Name)
 	end
 end
 
@@ -157,7 +151,6 @@ game.Players.PlayerAdded:Connect(function(plr)
 		-- Update cache
 		playerData[plr.UserId].Walked = walked.Value
 		playerData[plr.UserId].Wins = wins.Value
-		-- Normalize LastPosition to a serializable table
 		if data.LastPosition then
 			if typeof(data.LastPosition) == "Vector3" then
 				playerData[plr.UserId].LastPosition = serializeVector3(data.LastPosition)
@@ -190,12 +183,9 @@ game.Players.PlayerAdded:Connect(function(plr)
 			local humNow = currChar:FindFirstChildOfClass("Humanoid") or currChar:FindFirstChild("Humanoid")
 			if humNow then
 				humNow:SetAttribute("CheckpointSpeedMultiplier", mult)
-				--print(string.format("[Datastore] Immediate apply x%.2f for %s (passed=%d)", mult, plr.Name, playerData[plr.UserId].CheckpointsPassed))
 			end
 		end
-		--print(string.format("[Datastore] Restored checkpoints=%d mult=x%.2f for %s", playerData[plr.UserId].CheckpointsPassed, mult, plr.Name))
 
-		-- Save position and teleport them upon rejoining
 		local lastPosV3 = deserializeVector3(playerData[plr.UserId].LastPosition)
 		if lastPosV3 then
 
@@ -204,9 +194,7 @@ game.Players.PlayerAdded:Connect(function(plr)
 				local startPart = workspace:FindFirstChild(constant.START_PART_NAME)
 				if startPart and startPart:IsA("BasePart") then
 					targetPos = startPart.Position + Vector3.new(0, 5, 0)
-					--print(string.format("[Datastore] %s saved inside goal; teleporting to Start", plr.Name))
 
-					-- Optional: normalize cache so future saves persist Start instead of goal
 					playerData[plr.UserId].LastPosition = serializeVector3(targetPos)
 				end
 			end
@@ -214,7 +202,6 @@ game.Players.PlayerAdded:Connect(function(plr)
 			if plr.Character then
 				local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
 				if hrp then
-					--hrp.CFrame = CFrame.new(lastPosV3)
 					hrp.CFrame = CFrame.new(targetPos)
 				end
 			end
@@ -223,7 +210,6 @@ game.Players.PlayerAdded:Connect(function(plr)
 				task.wait(1)
 				local HumanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 				if HumanoidRootPart then
-					--HumanoidRootPart.CFrame = CFrame.new(lastPosV3)
 					HumanoidRootPart.CFrame = CFrame.new(targetPos)
 				end
 			end)
@@ -244,8 +230,7 @@ game.Players.PlayerAdded:Connect(function(plr)
 			playerData[plr.UserId].Wins = newValue
 		end
 	end)
-
-	-- Persist checkpoint count on attribute change
+	
 	plr:GetAttributeChangedSignal("CheckpointsPassed"):Connect(function()
 		local val = tonumber(plr:GetAttribute("CheckpointsPassed")) or 0
 		if playerData[plr.UserId] then
@@ -253,12 +238,10 @@ game.Players.PlayerAdded:Connect(function(plr)
 		end
 	end)
 	
-	-- Persist product boost duration remainder on attribute change
 	plr:GetAttributeChangedSignal("Boost2Remaining"):Connect(function()
 		local val = tonumber(plr:GetAttribute("Boost2Remaining")) or 0
 		if playerData[plr.UserId] then
 			playerData[plr.UserId].Boost2Remaining = val
-			--print(string.format("Datastore %s Boost2Remaining -> %d", plr.Name, val))
 		end
 	end)
 	
@@ -266,11 +249,9 @@ game.Players.PlayerAdded:Connect(function(plr)
 		local val = tonumber(plr:GetAttribute("Boost3Remaining")) or 0
 		if playerData[plr.UserId] then
 			playerData[plr.UserId].Boost3Remaining = val
-			--print(string.format("Datastore %s Boost3Remaining -> %d", plr.Name, val))
 		end
 	end)
 	
-	-- Persist early rebirth status on attribute change
 	plr:GetAttributeChangedSignal("isEarlyRebirth"):Connect(function()
 		local val = plr:GetAttribute("isEarlyRebirth")
 		if val ~= nil and playerData[plr.UserId] then
@@ -302,7 +283,6 @@ game.Players.PlayerAdded:Connect(function(plr)
 				local maxMult = constant.CHECKPOINT_MULTIPLIER_MAX or 5.0
 				local mult = math.clamp(1 + (passed * step), 1, maxMult)
 				hum:SetAttribute("CheckpointSpeedMultiplier", mult)
-				print(string.format("[Datastore] Reapplied x%.2f for %s (passed=%d)", mult, plr.Name, passed))
 			end
 		end)
 	end)
@@ -349,10 +329,8 @@ game.Players.PlayerRemoving:Connect(function(plr)
 		playerData[plr.UserId].LastPosition = serializeVector3(plr.Character.HumanoidRootPart.Position)
 	end
 	
-	-- Copy latest boost attributes just before final save
 	playerData[plr.UserId].Boost2Remaining = tonumber(plr:GetAttribute("Boost2Remaining")) or playerData[plr.UserId].Boost2Remaining or 0
 	playerData[plr.UserId].Boost3Remaining = tonumber(plr:GetAttribute("Boost3Remaining")) or playerData[plr.UserId].Boost3Remaining or 0
-	--print(string.format("[Datastore] Finalizing %s boosts: b2=%d b3=%d", plr.Name, playerData[plr.UserId].Boost2Remaining, playerData[plr.UserId].Boost3Remaining))
 	
 	local earlyRebirthStatus = plr:GetAttribute("isEarlyRebirth")
 	if earlyRebirthStatus ~= nil then
@@ -366,11 +344,12 @@ game.Players.PlayerRemoving:Connect(function(plr)
 	if rebirthCount ~= nil then
 		playerData[plr.UserId].RebirthCount = rebirthCount
 	end
-	-- Save final data
+	
 	local success = safeSetAsync(plr.UserId, playerData[plr.UserId])
 	if not success then
-		warn("[Datastore] failed to save to database for ", plr.Name)
+		warn("failed to save to database for ", plr.Name)
 	end
 
 	playerData[plr.UserId] = nil
 end)
+

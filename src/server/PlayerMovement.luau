@@ -23,10 +23,6 @@ local boostAnnounce = events:WaitForChild("BoostServerAnnounce")
 local PRODUCT_ID_2MOVEMENT = product.DOUBLE_SPEED
 local PRODUCT_ID_3MOVEMENT = product.THRICE_SPEED
 
---local REQUEST_WINDOW_SECONDS = 3
---local COOLDOWN_SECONDS = 60
---local MAX_REQUESTS_PER_WINDOW = 3
---local SPEED_DURATION = 300
 
 --Independent Cooldowns per player
 local lastUsedAt2: {[number]: number} = {}
@@ -64,7 +60,6 @@ getActiveBoosts.OnServerInvoke = function(plr)
 	if (r3 == 0 or r3 == nil) then
 		r3 = tonumber(plr:GetAttribute("Boost3Remaining")) or 0
 	end
-	print(string.format("[Speed] %s requested active boosts r2=%d r3=%d", plr.Name, r2, r3))
 	return r2, r3
 end
 
@@ -139,7 +134,7 @@ local function addBoostToAll(mult: number, duration: number)
 	for _, p in ipairs(Players:GetPlayers()) do
 		extendBoostFor(p.UserId, mult, duration)
 	end
-	-- Announce and display freshly added duration
+	
 	if mult == 2 then
 		displayEffect:FireAllClients("2x Speed", duration, "rbxassetid://87808357606141")
 		boostAnnounce:FireAllClients("A Player has bought 2x Speed for 5 minutes!")
@@ -185,12 +180,10 @@ Players.PlayerAdded:Connect(function(p)
 	p:GetAttributeChangedSignal("Boost2Remaining"):Connect(function()
 		remaining2ByUser[p.UserId] = tonumber(p:GetAttribute("Boost2Remaining")) or 0
 		applyToPlayer(p)
-		--print(string.format("[Speed] %s Boost2Remaining=%d", p.Name, remaining2ByUser[p.UserId]))
 	end)
 	p:GetAttributeChangedSignal("Boost3Remaining"):Connect(function()
 		remaining3ByUser[p.UserId] = tonumber(p:GetAttribute("Boost3Remaining")) or 0
 		applyToPlayer(p)
-		--print(string.format("[Speed] %s Boost3Remaining=%d", p.Name, remaining3ByUser[p.UserId]))
 	end)
 	-- Send existing effects to UI on join so timers appear
 	local r2 = remaining2ByUser[p.UserId] or 0
@@ -211,7 +204,6 @@ local function canUse2(userId: number): (boolean, number)
 	if not last then return true, 0 end
 	local remain = constant.COOLDOWN_SECONDS - (now - last)
 	if remain > 0 then 
-		--print("2x boost on cooldown for player " .. userId .. ". Remaining cooldown: " .. remain .. " seconds.")
 		return false, remain 
 	end
 	return true, 0
@@ -224,7 +216,6 @@ local function canUse3(userId: number): (boolean, number)
 	
 	local remain = constant.COOLDOWN_SECONDS - (now - last)
 	if remain > 0 then 
-		--print("3x boost on cooldown for player " .. userId .. ". Remaining cooldown: " .. remain .. " seconds.")
 		return false, remain 
 	end
 	return true, 0
@@ -281,7 +272,6 @@ if ThriceMovementSpeed then
 			
 			if not ok then pending3[buyer.user] = nil return end
 		else
-			--extendBoost(2, constant.SPEED_DURATION)
 			addBoostToAll(3, constant.SPEED_DURATION)
 			lastUsedAt3[buyer.UserId] = nowSec()
 			pending3[buyer.UserId] = nil

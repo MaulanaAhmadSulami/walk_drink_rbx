@@ -39,10 +39,11 @@ end
 
 local function resetOne(player: Player, startSpawn: BasePart)
 	local char = player.Character
-	if not char then print("ResetDistance: skip", player.Name, "no character") return end
+	if not char then return end
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	local root = char:FindFirstChild("HumanoidRootPart")
-	if not (hum and root) then print("ResetDistance: skip", player.Name, "no humanoid/root") return end
+	if not (hum and root) then return end
+
 	-- reset physics
 	hum.Sit = false
 	hum:ChangeState(Enum.HumanoidStateType.GettingUp)
@@ -58,18 +59,17 @@ local function resetOne(player: Player, startSpawn: BasePart)
 	if walked and walked:IsA("NumberValue") then
 		walked.Value = 0
 	end
-	print("ResetDistance: teleported", player.Name, "to start")
+	--print("ResetDistance: teleported", player.Name, "to start")
 end
 
 local function resetAllDistance(buyer: Player)
 	local startSpawn = getStartSpawn()
-	if not startSpawn then print("ResetDistance: Start part not found:", tostring(constant.START_PART_NAME)) return end
-	print("ResetDistance: running, buyer:", buyer and buyer.Name or "?", "start:", startSpawn:GetFullName())
+	if not startSpawn then return end
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr == buyer then
-			print("ResetDistance: skip buyer", plr.Name)
+			return
 		elseif plr:GetAttribute("VictoryActive") == true then
-			print("ResetDistance: skip victory", plr.Name)
+			return
 		else
 			resetOne(plr, startSpawn)
 			if displayEffect then
@@ -83,23 +83,23 @@ local function resetAllDistance(buyer: Player)
 end
 
 ResetAllDistEvent.OnServerEvent:Connect(function(buyer: Player)
-	print("ResetDistance: request from", buyer and buyer.Name or "?")
+	--print("ResetDistance: request from", buyer and buyer.Name or "?")
 	local now = nowSec()
 	local bucket = requestWindow[buyer.UserId]
 	if not bucket or now - (bucket.windowStart or 0) > constant.REQUEST_WINDOW_SECONDS then
 		requestWindow[buyer.UserId] = { windowStart = now, count = 1}
 	else
 		bucket.count += 1
-		if bucket.count > constant.MAX_REQUESTS_PER_WINDOW then print("ResetDistance: throttled", buyer.Name) return end
+		if bucket.count > constant.MAX_REQUESTS_PER_WINDOW then return end
 	end
 	local allowed, remaining = canUse(buyer.UserId)
-	if not allowed then print("ResetDistance: cooldown", buyer.Name, remaining .. "s left") return end
+	if not allowed then return end
 	pendingByBuyer[buyer.UserId] = { expiresAt = nowSec() + 60}
 	if PRODUCT_ID_RESET > 0 then
 		local ok, err = pcall(function()
 			MarketPlaceService:PromptProductPurchase(buyer, PRODUCT_ID_RESET)
 		end)
-		if not ok then pendingByBuyer[buyer.UserId] = nil print("ResetDistance: prompt failed", tostring(err)) end
+		if not ok then pendingByBuyer[buyer.UserId] = nil end
 	else
 		resetAllDistance(buyer)
 		lastUsedAt[buyer.UserId] = nowSec()
@@ -126,7 +126,8 @@ resetReceiptBF.OnInvoke = function(receipt)
 		lastUsedAt[buyerUserId] = nowSec()
 		ok = true
 	else
-		print("ResetDistance: receipt not processed yet or pending missing")
+		--print("ResetDistance: receipt not processed yet or pending missing")
+		return
 	end
 	pendingByBuyer[buyerUserId] = nil
 	return ok and Enum.ProductPurchaseDecision.PurchaseGranted or Enum.ProductPurchaseDecision.NotProcessedYet

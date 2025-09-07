@@ -7,9 +7,6 @@ local Marketplaceservice = game:GetService("MarketplaceService")
 local module = rs:WaitForChild("Modules")
 local constant = require(rs:WaitForChild("Constants"))
 local product = require(module:WaitForChild("Products"))
---local GOAL_TAG = "Goal[Example]"
---local START_PART = "StartPartStarting"
-
 local events = rs:WaitForChild("Events")
 local GoalReached = events:WaitForChild("GoalReachedEvent")
 local VictoryTeleportEvent = events:WaitForChild("VictoryTeleportEvent")
@@ -134,14 +131,12 @@ local function leaveZone(plr: Player)
 	inside[plr] = nil
 	
 	plr:SetAttribute("InGoal", false)
-	--print(string.format("[Goal] %s left goal zone", plr.Name))
 end
 
 -- Hook all parts with GoalZone Tag
 local function HookZonePart(part: BasePart)
 	if hookedParts[part] then return end
 	hookedParts[part] = true
-	--print(string.format("[Goal] Hooking goal part: %s", part:GetFullName()))
 	
 	part.CanTouch = true
 	touchCounters[part] = {}
@@ -154,7 +149,6 @@ local function HookZonePart(part: BasePart)
 		
 		local counter = touchCounters[part]
 		counter[plr] = (counter[plr] or 0) + 1
-		--print(string.format("[Goal] Touched %s (count=%d) on %s", plr.Name, counter[plr], part.Name))
 		tryEnterZone(plr)
 	end)
 	
@@ -184,7 +178,6 @@ local function HookZonePart(part: BasePart)
 			if math.abs(localPos.X) <= half.X and math.abs(localPos.Y) <= half.Y and math.abs(localPos.Z) <= half.Z then
 				local counter = touchCounters[part]
 				counter[plr] = (counter[plr] or 0) + 1
-				--print(string.format("[Goal] %s already inside %s at hook time", plr.Name, part.Name))
 				tryEnterZone(plr)
 			end
 		end
@@ -225,7 +218,6 @@ Players.PlayerAdded:Connect(function(plr)
 	
 	plr.CharacterAdded:Connect(function(char)
 		local hum = char:WaitForChild("Humanoid") :: Humanoid
-		-- clear upon respawn or death (this shouldnt be possible since reset btn is disabled but safety)
 		plr:SetAttribute("VictoryActive", false)
 		forceLeave(plr)
 		seedPlayer(plr)
@@ -251,14 +243,11 @@ Marketplaceservice.PromptGamePassPurchaseFinished:Connect(function(p, gamePassId
 	local id = product.DOUBLE_COMPLETION
 	if p and type(id) == "number" and id > 0 and gamePassId == id and wasPurchased then
 		isOwnGamepass[p.UserId] = true
-		print(p.Name .. " purchase of gamepass confirmed")
 	end
 end)
 
 
 VictoryTeleportEvent.OnServerEvent:Connect(function(plr)
-	
-	
 	local char = plr.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -274,14 +263,11 @@ VictoryTeleportEvent.OnServerEvent:Connect(function(plr)
 		plr:SetAttribute("RebirthCount", newRebirthCount)
 		
 		local earlyRebirthBonus = plr:GetAttribute("isEarlyRebirth") and 2 or 0
-		local rebirthBonus = newRebirthCount * 2
+		local rebirthBonus = newRebirthCount * 3
 		local defaultWalkspeed = 16
 		local newBaseSpeed = defaultWalkspeed + earlyRebirthBonus + rebirthBonus
 		
 		plr:SetAttribute("BaseSpeed", newBaseSpeed)
-		
-		print(string.format("%s completed rebirth #%d - BaseSpeed: %d (Early: %d, Rebirths: %d)", 
-			plr.Name, newRebirthCount, newBaseSpeed, earlyRebirthBonus, rebirthBonus))
 	end
 	
 	forceLeave(plr)

@@ -116,7 +116,6 @@ thirstPassCheck.OnServerEvent:Connect(function(p)
 	if MarketplaceService:UserOwnsGamePassAsync(p.UserId, products.LESS_THIRST) then
 		isOwnThirstPass[p.UserId] = true
 		checkOwnership(p)
-		--print(p.Name .. " owns the thirst gamepass nih")
 	end
 end)
 

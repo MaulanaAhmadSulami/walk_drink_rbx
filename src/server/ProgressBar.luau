@@ -68,23 +68,12 @@ PlayerMarkerRegisterEvent.OnServerEvent:Connect(function(player)
 	local uid = player.UserId
 	if emitterRegistered[uid] then
 		--warn(string.format("[PlayerMarker] Duplicate registration from %s. Ensure only one script emits PlayerMarkerEvent.", player.Name))
+		print("Duplicate detected")
 	else
 		emitterRegistered[uid] = true
 		registeredAt[uid] = tick()
-		--print(string.format("[PlayerMarker] Registered emitter for %s", player.Name))
 	end
 end)
-
--- For new player joining
---Players.PlayerAdded:Connect(function(newPlayer)
---	for userId, progress in pairs(playerProgress) do
---		local otherPlayer = Players:GetPlayerByUserId(userId)
---		if otherPlayer then
---			PlayerMarkerEvent:FireClient(newPlayer, otherPlayer, progress)
---		end
---	end
---end)
-
 
 --remove players from progress bar when they leave
 Players.PlayerRemoving:Connect(function(onPlayerLeaving)

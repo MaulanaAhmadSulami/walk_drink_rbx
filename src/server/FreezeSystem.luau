@@ -17,10 +17,6 @@ local serverAnnouncementEvent = events:WaitForChild("ServerAnnouncement")
 
 
 local PRODUCT_ID_FREEZE = Products.FREEZE -- change later
---local REQUEST_WINDOW_SECONDS = 3
---local COOLDOWN_SECONDS = 60
---local MAX_REQUESTS_PER_WINDOW = 3
---local FREEZE_DURATION = 60
 
 
 local lastUsedAt: {[number]: number} = {}
@@ -141,7 +137,6 @@ local function canUseFreeze(userId: number): (boolean, number)
 end
 
 FreezeAllEvent.OnServerEvent:Connect(function(buyer: Player)
-	--print(string.format("[FreezeSystem] Server received request from %s", buyer.Name))
 	local now = os.time()
 	local bucket = requestWindow[buyer.UserId]
 	if not bucket or now - bucket.windowStart > constant.REQUEST_WINDOW_SECONDS then
@@ -149,7 +144,6 @@ FreezeAllEvent.OnServerEvent:Connect(function(buyer: Player)
 	else
 		bucket.count += 1
 		if bucket.count > constant.MAX_REQUESTS_PER_WINDOW then
-			--warn("[FreezeSystem] Throttled duplicate clicks")
 			return 
 		end
 	end
@@ -158,7 +152,6 @@ FreezeAllEvent.OnServerEvent:Connect(function(buyer: Player)
 	-- Cooldown
 	local allowed, remaining = canUseFreeze(buyer.UserId)
 	if not allowed then 
-		--warn(string.format("[FreezeSystem] On cooldown: %ds", remaining or 0))
 		return 
 	end
 	
@@ -166,12 +159,10 @@ FreezeAllEvent.OnServerEvent:Connect(function(buyer: Player)
 	pendingFreezeByBuyer[buyer.UserId] = {expiresAt = os.time() + 60}
 	
 	if PRODUCT_ID_FREEZE > 0 then
-		--print(string.format("[FreezeSystem] Prompting purchase for %s", buyer.Name))
 		local ok, err = pcall(function()
 			MarketPlaceService:PromptProductPurchase(buyer, PRODUCT_ID_FREEZE)
 		end)
 		if not ok then
-			--warn(string.format("[FreezeSystem] Prompt failed: %s", tostring(err)))
 			pendingFreezeByBuyer[buyer.UserId] = nil
 			return
 		end
@@ -208,10 +199,8 @@ freezeReceiptBF.OnInvoke = function(receipt)
 			serverAnnouncementEvent:FireAllClients(buyer.Name .. " has purchased freeze all (1minute)")
 			displayEffect:FireAllClients("Freeze All", 60, "rbxassetid://115673118749377")
 			lastUsedAt[buyerUserId] = os.time()
-			--print("[FreezeSystem] Freeze applied and purchase granted")
 			return Enum.ProductPurchaseDecision.PurchaseGranted
 		else
-			--warn("[FreezeSystem] Freeze unavailable; retrying later (NotProcessedYet)")
 			return Enum.ProductPurchaseDecision.NotProcessedYet
 		end
 	end

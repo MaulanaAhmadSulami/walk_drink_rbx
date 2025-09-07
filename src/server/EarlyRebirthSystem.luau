@@ -18,17 +18,15 @@ earlyEvent.OnServerEvent:Connect(function(plr)
 		return
 	end
 
-	-- Calculate total base speed including rebirth bonuses
 	local rebirthCount = tonumber(plr:GetAttribute("RebirthCount")) or 0
 	local rebirthBonus = rebirthCount * 2
-	local defaultWalkSpeed = 16 -- Default Roblox walkspeed
+	local defaultWalkSpeed = 16
 	local earlyRebirthBonus = 2 -- +2 for early rebirth
 	local newBaseSpeed = defaultWalkSpeed + earlyRebirthBonus + rebirthBonus
 
 	plr:SetAttribute("BaseSpeed", newBaseSpeed)
 	plr:SetAttribute("isEarlyRebirth", true)
 
-	print(plr.Name, "Early Rebirth taken - new base speed:", plr:GetAttribute("BaseSpeed"))
 end)
 
 -- Handle character spawning to apply base speed
@@ -36,7 +34,6 @@ players.PlayerAdded:Connect(function(plr)
 	plr.CharacterAdded:Connect(function(char)
 		local hum = char:WaitForChild("Humanoid") :: Humanoid
 
-		-- Wait a bit for PlayerDatastore to load attributes
 		task.wait(0.1)
 
 		-- Initialize attributes for new players
@@ -48,16 +45,12 @@ players.PlayerAdded:Connect(function(plr)
 			plr:SetAttribute("RebirthCount", 0)
 		end
 
-		-- Calculate total base speed from all sources
 		local earlyRebirthBonus = plr:GetAttribute("isEarlyRebirth") and 2 or 0
 		local rebirthCount = tonumber(plr:GetAttribute("RebirthCount")) or 0
 		local rebirthBonus = rebirthCount * 2
-		local defaultWalkSpeed = 16 -- Default Roblox walkspeed
+		local defaultWalkSpeed = 16 
 		local totalBaseSpeed = defaultWalkSpeed + earlyRebirthBonus + rebirthBonus
 
 		plr:SetAttribute("BaseSpeed", totalBaseSpeed)
-
-		print(string.format("Set for %s: %d (Early: %d, Rebirths: %d)", 
-			plr.Name, totalBaseSpeed, earlyRebirthBonus, rebirthBonus))
 	end)
 end)

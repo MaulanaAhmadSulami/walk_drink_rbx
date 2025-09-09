@@ -51,10 +51,17 @@ local function recomputeSpeed(p: Player)
 	
 	local baseSpeed = p:GetAttribute("BaseSpeed") or constant.NORMAL_WALKSPEED
 	
+	-- Additive bonus from drink effects if present
+	local drinkBonus = p:GetAttribute("DrinkBonusSpeed") or hum:GetAttribute("DrinkBonusSpeed") or 0
+	if typeof(drinkBonus) ~= "number" then
+		drinkBonus = 0
+	end
+	drinkBonus = math.max(0, drinkBonus)
+
 	if thirst <= 0 then
 		hum.WalkSpeed = constant.EXHAUSTED_WALKSPEED
 	else
-		hum.WalkSpeed = baseSpeed * mult
+		hum.WalkSpeed = (baseSpeed * mult) + drinkBonus
 	end
 end
 

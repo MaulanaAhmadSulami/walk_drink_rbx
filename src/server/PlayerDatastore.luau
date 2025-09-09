@@ -7,6 +7,7 @@ local events = rs:WaitForChild("Events")
 local statUpdateEvent = events:WaitForChild("StatsUpdateEvent")
 
 local constant = require(rs:WaitForChild("Constants"))
+local InventoryManager = require(rs:WaitForChild("Shared"):WaitForChild("InventoryManager"))
 
 local playerData = {}
 
@@ -92,6 +93,7 @@ end
 local function savePlayerData(plr)
 	if not playerData[plr.UserId] then return end
 	local cache = playerData[plr.UserId]
+	cache.Inventory = InventoryManager.serialize(plr)
 	print(string.format("[Datastore] Saving %s boosts: b2=%s b3=%s", plr.Name, tostring(cache.Boost2Remaining), tostring(cache.Boost3Remaining)))
 	local success = safeSetAsync(plr.UserId, cache)
 	if not success then
@@ -141,6 +143,7 @@ game.Players.PlayerAdded:Connect(function(plr)
 		isEarlyRebirth = false,
 		BaseSpeed = nil,
 		RebirthCount = 0,
+		Inventory = nil,
 	}
 
 
@@ -186,6 +189,16 @@ game.Players.PlayerAdded:Connect(function(plr)
 			end
 		end
 
+		-- Initialize and optionally auto-equip saved inventory
+		local savedInv = data.Inventory or data.inventory
+		local inv = InventoryManager.initPlayer(plr, savedInv)
+		playerData[plr.UserId].Inventory = InventoryManager.serialize(plr)
+		if inv and inv.equippedDrinkId then
+			task.defer(function()
+				InventoryManager.equipDrink(plr, inv.equippedDrinkId)
+			end)
+		end
+
 		local lastPosV3 = deserializeVector3(playerData[plr.UserId].LastPosition)
 		if lastPosV3 then
 
@@ -217,6 +230,9 @@ game.Players.PlayerAdded:Connect(function(plr)
 
 	else
 		warn(string.format("No saves found or is corrupted for player : %s", plr.Name))
+		-- Ensure inventory is at least initialized empty for new players
+		InventoryManager.initPlayer(plr, { items = {}, equippedDrinkId = nil })
+		playerData[plr.UserId].Inventory = InventoryManager.serialize(plr)
 	end
 
 	walked.Changed:Connect(function(newValue)
@@ -345,6 +361,8 @@ game.Players.PlayerRemoving:Connect(function(plr)
 		playerData[plr.UserId].RebirthCount = rebirthCount
 	end
 	
+	-- Ensure latest inventory is captured on leave
+	playerData[plr.UserId].Inventory = InventoryManager.serialize(plr)
 	local success = safeSetAsync(plr.UserId, playerData[plr.UserId])
 	if not success then
 		warn("failed to save to database for ", plr.Name)
